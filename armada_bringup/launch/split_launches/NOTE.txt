@@ -13,16 +13,16 @@ Helper module:
 
 Suggested usage examples:
 1) World only:
-   ros2 launch <your_pkg> sim_world.launch.py
+   ros2 launch armada_bringup sim_world.launch.py
 
 2) Robot + camera + MoveIt:
-   ros2 launch <your_pkg> full_system.launch.py launch_learned_perception:=False launch_classic_perception:=False
+   ros2 launch armada_bringup full_system.launch.py launch_learned_perception:=False launch_classic_perception:=False
 
 3) UOC + CGN RGBD path:
-   ros2 launch <your_pkg> full_system.launch.py \
+   ros2 launch armada_bringup full_system.launch.py \
        launch_cgn_rgbd:=True launch_uoc_rgbd:=True \
        launch_cgn_cloud:=False launch_uoc_cloud:=False \
        launch_graspsam:=False
 
 4) FlexBE on top:
-   ros2 launch <your_pkg> full_system.launch.py launch_flexbe:=True
+   ros2 launch armada_bringup full_system.launch.py launch_flexbe:=True

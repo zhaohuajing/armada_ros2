@@ -5,6 +5,14 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
 
+# GEN3/real-robot addition: allow this shared launch helper to build a Kinova
+# MoveIt config when robot_source:=kortex / robot_model:=gen3 is requested.
+# Original Panda/Armada behavior is kept below as the default path.
+try:
+    from moveit_configs_utils import MoveItConfigsBuilder
+except Exception:
+    MoveItConfigsBuilder = None
+
 
 def load_file(package_name, file_path):
     package_path = get_package_share_directory(package_name)
@@ -43,13 +51,57 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         DeclareLaunchArgument(
             'robot_source',
             default_value='armada',
-            description='Package prefix for description/bringup/gazebo packages.'
+            description='Package prefix for description/bringup/gazebo packages. Use robot_source:=kortex for the Kinova Gen3 path.'
         ),
         DeclareLaunchArgument(
             'workstation',
             # default_value='simple_pedestal',
             default_value='pedestal_workstation',
             description='Workstation or pedestal suffix used by the xacro file.'
+        ),
+
+        # GEN3/real-robot additions. These are harmless for the original Panda path,
+        # but make the split launch files usable when robot.launch.py already brings up
+        # the Kinova robot and move_group.
+        DeclareLaunchArgument(
+            'planning_group',
+            default_value='',
+            description='Override MoveIt planning group. Leave empty to use the original derived value.'
+        ),
+        DeclareLaunchArgument(
+            'base_frame',
+            default_value='',
+            description='Override base/planning frame for debug markers and grasp transforms. Leave empty for default.'
+        ),
+        DeclareLaunchArgument(
+            'ee_link',
+            default_value='',
+            description='Optional end-effector link override for MoveGroupInterface.'
+        ),
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='False',
+            description='Use simulated time. Set False for the real Gen3.'
+        ),
+        DeclareLaunchArgument(
+            'launch_move_group',
+            default_value='True',
+            description='Start move_group from moveit_core.launch.py. Set False if Kinova robot.launch.py already started move_group.'
+        ),
+        DeclareLaunchArgument(
+            'moveit_config_package',
+            default_value='',
+            description='Optional MoveIt config package override. For Gen3 default is kinova_gen3_7dof_robotiq_2f_85_moveit_config.'
+        ),
+        DeclareLaunchArgument(
+            'robot_ip',
+            default_value='10.10.10.43',
+            description='Kinova robot IP used only if this helper needs to build a Kinova robot_description.'
+        ),
+        DeclareLaunchArgument(
+            'use_fake_hardware',
+            default_value='true',
+            description='Kinova fake hardware flag used only if this helper needs to build a Kinova robot_description.'
         ),
     ]
 
@@ -93,7 +145,148 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
 
 
 
-def build_context(robot_make, robot_model, robot_source, workstation):
+def _empty_optional_paths():
+    """GEN3 helper: return safe empty path entries when Gazebo-only packages are not used."""
+    return {
+        'gazebo_package_path': '',
+        'ros_gz_sim_path': '',
+        'mnet_pkg_path': '',
+        'flexbe_webui_path': '',
+        'ycb_root': '',
+    }
+
+
+
+def build_context(robot_make, robot_model, robot_source, workstation,
+                  planning_group_override='', base_frame_override='', ee_link_override='',
+                  use_sim_time='False', launch_move_group='True',
+                  moveit_config_package_override='', robot_ip='10.10.10.43',
+                  use_fake_hardware='true'):
+    # GEN3/real-robot addition: special Kinova/Kortex path.
+    # Original code below assumed packages like armada_description, armada_gazebo,
+    # and panda_moveit_config. The Kinova MoveIt config you use is generated through
+    # MoveItConfigsBuilder, matching robot.launch.py.
+    is_kortex_gen3 = (
+        robot_source.lower() in ['kortex', 'kinova']
+        or robot_model.lower() in ['gen3', 'kinova_gen3_7dof_robotiq_2f_85']
+        or robot_make.lower() in ['gen3', 'kinova']
+    )
+
+    if is_kortex_gen3:
+        if MoveItConfigsBuilder is None:
+            raise RuntimeError('moveit_configs_utils is required for the Kinova Gen3 launch_common path.')
+
+        # Original derived package line, not valid for the Kinova generated package:
+        # moveit_config_package = f"{robot_model}_moveit_config"
+        moveit_config_package = moveit_config_package_override or 'kinova_gen3_7dof_robotiq_2f_85_moveit_config'
+        description_package = 'kortex_description'
+        bringup_package = 'kortex_bringup'
+        gazebo_package = ''
+
+        launch_arguments = {
+            'robot_ip': robot_ip,
+            'use_fake_hardware': use_fake_hardware,
+            'gripper': 'robotiq_2f_85',
+            'gripper_joint_name': 'robotiq_85_left_knuckle_joint',
+            'dof': '7',
+            'gripper_max_velocity': '100.0',
+            'gripper_max_force': '100.0',
+            'use_internal_bus_gripper_comm': 'true',
+            'vision': 'true',
+        }
+
+        moveit_config = (
+            MoveItConfigsBuilder('gen3', package_name=moveit_config_package)
+            .robot_description(mappings=launch_arguments)
+            .trajectory_execution(file_path='config/moveit_controllers.yaml')
+            .planning_scene_monitor(
+                publish_robot_description=True,
+                publish_robot_description_semantic=True,
+            )
+            .planning_pipelines(pipelines=['ompl'])
+            .to_moveit_configs()
+        )
+        moveit_config.moveit_cpp.update({'use_sim_time': str(use_sim_time).lower() == 'true'})
+
+        # Keep these names explicit for the real robot. Verified from the Gen3 SRDF:
+        #   group name="manipulator" uses chain base_link -> end_effector_link.
+        # Original preliminary default was:
+        # planning_group = planning_group_override or 'arm'
+        # GEN3/real-robot default based on robot_description_semantic/view_frames:
+        planning_group = planning_group_override or 'manipulator'
+        base_frame = base_frame_override or 'base_link'
+        ee_link = ee_link_override or 'end_effector_link'
+
+        moveit_config_path = get_package_share_directory(moveit_config_package)
+        robot_description_pkg = get_package_share_directory(description_package)
+        try:
+            bringup_package_path = get_package_share_directory(bringup_package)
+        except Exception:
+            bringup_package_path = ''
+
+        # Prefer the MoveItConfigsBuilder dictionaries. This matches the attached robot.launch.py.
+        mdict = moveit_config.to_dict()
+        robot_description = moveit_config.robot_description
+        robot_description_semantic = moveit_config.robot_description_semantic
+        robot_description_kinematics = moveit_config.robot_description_kinematics
+
+        # These keys may already be inside mdict; keep separate variables to preserve the
+        # original moveit_core.launch.py structure.
+        ompl_planning_pipeline_config = moveit_config.planning_pipelines
+        joint_limits_yaml = moveit_config.joint_limits
+        moveit_controllers = {
+            'moveit_simple_controller_manager': load_yaml(moveit_config_package, 'config/moveit_controllers.yaml'),
+            'moveit_controller_manager': 'moveit_simple_controller_manager/MoveItSimpleControllerManager',
+        }
+        trajectory_execution = {
+            # Original simulation value:
+            # 'moveit_manage_controllers': True,
+            # GEN3/real robot: robot.launch.py already spawns controllers.
+            'moveit_manage_controllers': False,
+            'trajectory_execution.allowed_execution_duration_scaling': 1.2,
+            'trajectory_execution.allowed_goal_duration_margin': 0.5,
+            'trajectory_execution.allowed_start_tolerance': 0.01,
+        }
+        planning_scene_monitor_parameters = {
+            'publish_planning_scene': True,
+            'publish_geometry_updates': True,
+            'publish_state_updates': True,
+            'publish_transforms_updates': True,
+        }
+
+        out = {
+            'robot_make': robot_make,
+            'robot_model': robot_model,
+            'robot_source': robot_source,
+            'workstation': workstation,
+            'description_package': description_package,
+            'bringup_package': bringup_package,
+            'moveit_config_package': moveit_config_package,
+            'gazebo_package': gazebo_package,
+            'robot_description_pkg': robot_description_pkg,
+            'bringup_package_path': bringup_package_path,
+            'moveit_config_path': moveit_config_path,
+            'robot_description': robot_description,
+            'robot_description_semantic': robot_description_semantic,
+            'robot_description_kinematics': robot_description_kinematics,
+            'ompl_planning_pipeline_config': ompl_planning_pipeline_config,
+            'moveit_controllers': moveit_controllers,
+            'joint_limits_yaml': joint_limits_yaml,
+            'trajectory_execution': trajectory_execution,
+            'planning_scene_monitor_parameters': planning_scene_monitor_parameters,
+            'planning_group': planning_group,
+            'base_frame': base_frame,
+            'ee_link': ee_link,
+            'use_sim_time': str(use_sim_time),
+            'launch_move_group': str(launch_move_group),
+            'moveit_config': moveit_config,
+        }
+        out.update(_empty_optional_paths())
+        return out
+
+    # -----------------------------
+    # Original Panda/Armada path
+    # -----------------------------
     description_package = f"{robot_source}_description"
     bringup_package = f"{robot_source}_bringup"
     moveit_config_package = f"{robot_model}_moveit_config"
@@ -191,7 +384,14 @@ def build_context(robot_make, robot_model, robot_source, workstation):
         'joint_limits_yaml': joint_limits_yaml,
         'trajectory_execution': trajectory_execution,
         'planning_scene_monitor_parameters': planning_scene_monitor_parameters,
-        'planning_group': f'{robot_make}_arm',
+        # Original line:
+        # 'planning_group': f'{robot_make}_arm',
+        # GEN3-safe: allow explicit override while preserving original derived value.
+        'planning_group': planning_group_override or f'{robot_make}_arm',
+        'base_frame': base_frame_override or ('panda_link0' if robot_make == 'panda' else f'{robot_make}_link0'),
+        'ee_link': ee_link_override or '',
+        'use_sim_time': str(use_sim_time),
+        'launch_move_group': str(launch_move_group),
     }
 
 
