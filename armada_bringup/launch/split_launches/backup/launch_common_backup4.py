@@ -134,42 +134,6 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
             default_value='100.0',
             description='Max effort for Robotiq gripper action.'
         ),
-
-        DeclareLaunchArgument(
-            'gripper_action_timeout',
-            default_value='10.0',
-            description='Timeout in seconds for Robotiq gripper action goal/result.'
-        ),
-        DeclareLaunchArgument(
-            'open_before_grasp',
-            default_value='True',
-            description='If true, reach_to_grasp opens the gripper before closing/lifting.'
-        ),
-        DeclareLaunchArgument(
-            'move_to_grasp_pose_first',
-            default_value='False',
-            description='If true, reach_to_grasp moves to the grasp pose again. Usually False because MoveOMPL already did this.'
-        ),
-        DeclareLaunchArgument(
-            'pregrasp_base_z_offset',
-            default_value='0.0',
-            description='Optional base-frame Z offset for an intermediate pregrasp pose.'
-        ),
-        DeclareLaunchArgument(
-            'approach_ee_z_distance',
-            default_value='0.0',
-            description='Optional approach motion along end-effector Z. Nonzero values can also change X/Y depending on orientation.'
-        ),
-        DeclareLaunchArgument(
-            'lift_base_z_distance',
-            default_value='0.10',
-            description='Base-frame Z lift after gripper close.'
-        ),
-        DeclareLaunchArgument(
-            'reopen_after_lift',
-            default_value='False',
-            description='If true, reopen gripper after lift for drop tests.'
-        ),
     ]
 
     if include_flexbe:

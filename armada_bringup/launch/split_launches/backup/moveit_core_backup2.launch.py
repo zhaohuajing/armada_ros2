@@ -78,24 +78,6 @@ def launch_setup(context, *args, **kwargs):
         cfg['robot_description_semantic'],
     ]
 
-    # Parameters only used by reach_to_grasp_service. They are kept separate so the
-    # other motion-service nodes do not receive unused gripper parameters.
-    reach_to_grasp_params = common_params + [
-        {'gripper_group': LaunchConfiguration('gripper_group')},
-        {'use_gripper_action': LaunchConfiguration('use_gripper_action')},
-        {'gripper_action_name': LaunchConfiguration('gripper_action_name')},
-        {'open_gripper_position': LaunchConfiguration('open_gripper_position')},
-        {'close_gripper_position': LaunchConfiguration('close_gripper_position')},
-        {'gripper_max_effort': LaunchConfiguration('gripper_max_effort')},
-        {'gripper_action_timeout': LaunchConfiguration('gripper_action_timeout')},
-        {'open_before_grasp': LaunchConfiguration('open_before_grasp')},
-        {'move_to_grasp_pose_first': LaunchConfiguration('move_to_grasp_pose_first')},
-        {'pregrasp_base_z_offset': LaunchConfiguration('pregrasp_base_z_offset')},
-        {'approach_ee_z_distance': LaunchConfiguration('approach_ee_z_distance')},
-        {'lift_base_z_distance': LaunchConfiguration('lift_base_z_distance')},
-        {'reopen_after_lift': LaunchConfiguration('reopen_after_lift')},
-    ]
-
     move_cartesian = Node(
         package='compare_flexbe_utilities',
         executable='cartesian_move_to_pose_service',
@@ -105,7 +87,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     move_pose = Node(
-        package='cgn_flexbe_utilities',
+        package='compare_flexbe_utilities',
         executable='move_to_pose_service',
         name='move_to_pose_service',
         output='screen',
@@ -121,11 +103,11 @@ def launch_setup(context, *args, **kwargs):
     )
 
     reach_to_grasp = Node(
-        package='cgn_flexbe_utilities',
+        package='compare_flexbe_utilities',
         executable='reach_to_grasp_service',
         name='reach_to_grasp_service',
         output='screen',
-        parameters=reach_to_grasp_params,
+        parameters=common_params,
     )
 
 

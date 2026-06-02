@@ -20,6 +20,7 @@ def launch_setup(context, *args, **kwargs):
         planning_group_override=LaunchConfiguration('planning_group').perform(context),
         base_frame_override=LaunchConfiguration('base_frame').perform(context),
         ee_link_override=LaunchConfiguration('ee_link').perform(context),
+        gripper_group_override=LaunchConfiguration('gripper_group').perform(context),
         use_sim_time=LaunchConfiguration('use_sim_time').perform(context),
         launch_move_group=LaunchConfiguration('launch_move_group').perform(context),
         moveit_config_package_override=LaunchConfiguration('moveit_config_package').perform(context),
@@ -78,24 +79,6 @@ def launch_setup(context, *args, **kwargs):
         cfg['robot_description_semantic'],
     ]
 
-    # Parameters only used by reach_to_grasp_service. They are kept separate so the
-    # other motion-service nodes do not receive unused gripper parameters.
-    reach_to_grasp_params = common_params + [
-        {'gripper_group': LaunchConfiguration('gripper_group')},
-        {'use_gripper_action': LaunchConfiguration('use_gripper_action')},
-        {'gripper_action_name': LaunchConfiguration('gripper_action_name')},
-        {'open_gripper_position': LaunchConfiguration('open_gripper_position')},
-        {'close_gripper_position': LaunchConfiguration('close_gripper_position')},
-        {'gripper_max_effort': LaunchConfiguration('gripper_max_effort')},
-        {'gripper_action_timeout': LaunchConfiguration('gripper_action_timeout')},
-        {'open_before_grasp': LaunchConfiguration('open_before_grasp')},
-        {'move_to_grasp_pose_first': LaunchConfiguration('move_to_grasp_pose_first')},
-        {'pregrasp_base_z_offset': LaunchConfiguration('pregrasp_base_z_offset')},
-        {'approach_ee_z_distance': LaunchConfiguration('approach_ee_z_distance')},
-        {'lift_base_z_distance': LaunchConfiguration('lift_base_z_distance')},
-        {'reopen_after_lift': LaunchConfiguration('reopen_after_lift')},
-    ]
-
     move_cartesian = Node(
         package='compare_flexbe_utilities',
         executable='cartesian_move_to_pose_service',
@@ -105,7 +88,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     move_pose = Node(
-        package='cgn_flexbe_utilities',
+        package='compare_flexbe_utilities',
         executable='move_to_pose_service',
         name='move_to_pose_service',
         output='screen',
@@ -120,11 +103,28 @@ def launch_setup(context, *args, **kwargs):
         parameters=common_params,
     )
 
+    reach_to_grasp_params = list(common_params) + [
+        # GEN3/Robotiq additions for the modified reach_to_grasp_service.cpp.
+        # Original launch only passed planning_group/robot_description/semantic.
+        {'gripper_group': cfg['gripper_group']},
+        {'use_named_gripper_targets': True},
+        {'open_named_target': LaunchConfiguration('open_named_target')},
+        {'close_named_target': LaunchConfiguration('close_named_target')},
+        {'reopen_after_lift': LaunchConfiguration('reopen_after_lift')},
+        {'lift_base_z_distance': LaunchConfiguration('lift_base_z_distance')},
+        # Defaults below preserve your current working CGN pose: close at the pose and lift.
+        {'move_to_grasp_pose_first': True},
+        {'pregrasp_base_z_offset': 0.0},
+        {'approach_ee_z_distance': 0.0},
+    ]
+
     reach_to_grasp = Node(
-        package='cgn_flexbe_utilities',
+        package='compare_flexbe_utilities',
         executable='reach_to_grasp_service',
         name='reach_to_grasp_service',
         output='screen',
+        # Original line:
+        # parameters=common_params,
         parameters=reach_to_grasp_params,
     )
 

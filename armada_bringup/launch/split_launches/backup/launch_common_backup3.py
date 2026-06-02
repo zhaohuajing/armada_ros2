@@ -79,6 +79,31 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
             description='Optional end-effector link override for MoveGroupInterface.'
         ),
         DeclareLaunchArgument(
+            'gripper_group',
+            default_value='',
+            description='Override MoveIt gripper group. For Gen3 Robotiq use gripper.'
+        ),
+        DeclareLaunchArgument(
+            'open_named_target',
+            default_value='Open',
+            description='Named gripper target for opening. Gen3 Robotiq SRDF uses Open.'
+        ),
+        DeclareLaunchArgument(
+            'close_named_target',
+            default_value='Close',
+            description='Named gripper target for closing. Gen3 Robotiq SRDF uses Close.'
+        ),
+        DeclareLaunchArgument(
+            'reopen_after_lift',
+            default_value='False',
+            description='If True, reopen gripper after lifting. Keep False for pick-up.'
+        ),
+        DeclareLaunchArgument(
+            'lift_base_z_distance',
+            default_value='0.10',
+            description='Base-frame Z lift distance after closing the gripper.'
+        ),
+        DeclareLaunchArgument(
             'use_sim_time',
             default_value='False',
             description='Use simulated time. Set False for the real Gen3.'
@@ -102,73 +127,6 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
             'use_fake_hardware',
             default_value='true',
             description='Kinova fake hardware flag used only if this helper needs to build a Kinova robot_description.'
-        ),
-
-        DeclareLaunchArgument(
-            'gripper_group',
-            default_value='gripper',
-            description='MoveIt gripper group for Gen3/Robotiq reach_to_grasp service.'
-        ),
-        DeclareLaunchArgument(
-            'use_gripper_action',
-            default_value='True',
-            description='If true, reach_to_grasp commands Robotiq through GripperCommand action instead of MoveIt gripper group.'
-        ),
-        DeclareLaunchArgument(
-            'gripper_action_name',
-            default_value='/robotiq_gripper_controller/gripper_cmd',
-            description='Robotiq GripperCommand action name.'
-        ),
-        DeclareLaunchArgument(
-            'open_gripper_position',
-            default_value='0.0',
-            description='Open position for Robotiq gripper action.'
-        ),
-        DeclareLaunchArgument(
-            'close_gripper_position',
-            default_value='0.8',
-            description='Close position for Robotiq gripper action.'
-        ),
-        DeclareLaunchArgument(
-            'gripper_max_effort',
-            default_value='100.0',
-            description='Max effort for Robotiq gripper action.'
-        ),
-
-        DeclareLaunchArgument(
-            'gripper_action_timeout',
-            default_value='10.0',
-            description='Timeout in seconds for Robotiq gripper action goal/result.'
-        ),
-        DeclareLaunchArgument(
-            'open_before_grasp',
-            default_value='True',
-            description='If true, reach_to_grasp opens the gripper before closing/lifting.'
-        ),
-        DeclareLaunchArgument(
-            'move_to_grasp_pose_first',
-            default_value='False',
-            description='If true, reach_to_grasp moves to the grasp pose again. Usually False because MoveOMPL already did this.'
-        ),
-        DeclareLaunchArgument(
-            'pregrasp_base_z_offset',
-            default_value='0.0',
-            description='Optional base-frame Z offset for an intermediate pregrasp pose.'
-        ),
-        DeclareLaunchArgument(
-            'approach_ee_z_distance',
-            default_value='0.0',
-            description='Optional approach motion along end-effector Z. Nonzero values can also change X/Y depending on orientation.'
-        ),
-        DeclareLaunchArgument(
-            'lift_base_z_distance',
-            default_value='0.10',
-            description='Base-frame Z lift after gripper close.'
-        ),
-        DeclareLaunchArgument(
-            'reopen_after_lift',
-            default_value='False',
-            description='If true, reopen gripper after lift for drop tests.'
         ),
     ]
 
@@ -225,7 +183,7 @@ def _empty_optional_paths():
 
 
 def build_context(robot_make, robot_model, robot_source, workstation,
-                  planning_group_override='', base_frame_override='', ee_link_override='',
+                  planning_group_override='', base_frame_override='', ee_link_override='', gripper_group_override='',
                   use_sim_time='False', launch_move_group='True',
                   moveit_config_package_override='', robot_ip='10.10.10.43',
                   use_fake_hardware='true'):
@@ -276,9 +234,12 @@ def build_context(robot_make, robot_model, robot_source, workstation,
         moveit_config.moveit_cpp.update({'use_sim_time': str(use_sim_time).lower() == 'true'})
 
         # Keep these names explicit for the real robot. Verify them with the SRDF/MoveIt logs.
+        # Original temporary Gen3 planning group default was 'arm'.
+        # Verified Kinova SRDF group is 'manipulator'; gripper group is 'gripper'.
         planning_group = planning_group_override or 'manipulator'
         base_frame = base_frame_override or 'base_link'
         ee_link = ee_link_override or 'end_effector_link'
+        gripper_group = gripper_group_override or 'gripper'
 
         moveit_config_path = get_package_share_directory(moveit_config_package)
         robot_description_pkg = get_package_share_directory(description_package)
@@ -340,6 +301,7 @@ def build_context(robot_make, robot_model, robot_source, workstation,
             'planning_group': planning_group,
             'base_frame': base_frame,
             'ee_link': ee_link,
+            'gripper_group': gripper_group,
             'use_sim_time': str(use_sim_time),
             'launch_move_group': str(launch_move_group),
             'moveit_config': moveit_config,
@@ -453,6 +415,7 @@ def build_context(robot_make, robot_model, robot_source, workstation,
         'planning_group': planning_group_override or f'{robot_make}_arm',
         'base_frame': base_frame_override or ('panda_link0' if robot_make == 'panda' else f'{robot_make}_link0'),
         'ee_link': ee_link_override or '',
+        'gripper_group': gripper_group_override or f'{robot_make}_hand',
         'use_sim_time': str(use_sim_time),
         'launch_move_group': str(launch_move_group),
     }

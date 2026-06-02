@@ -87,13 +87,6 @@ def launch_setup(context, *args, **kwargs):
         {'open_gripper_position': LaunchConfiguration('open_gripper_position')},
         {'close_gripper_position': LaunchConfiguration('close_gripper_position')},
         {'gripper_max_effort': LaunchConfiguration('gripper_max_effort')},
-        {'gripper_action_timeout': LaunchConfiguration('gripper_action_timeout')},
-        {'open_before_grasp': LaunchConfiguration('open_before_grasp')},
-        {'move_to_grasp_pose_first': LaunchConfiguration('move_to_grasp_pose_first')},
-        {'pregrasp_base_z_offset': LaunchConfiguration('pregrasp_base_z_offset')},
-        {'approach_ee_z_distance': LaunchConfiguration('approach_ee_z_distance')},
-        {'lift_base_z_distance': LaunchConfiguration('lift_base_z_distance')},
-        {'reopen_after_lift': LaunchConfiguration('reopen_after_lift')},
     ]
 
     move_cartesian = Node(
