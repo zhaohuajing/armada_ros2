@@ -40,17 +40,17 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
     args = [
         DeclareLaunchArgument(
             'robot_make',
-            default_value='gen3',
+            default_value='panda',
             description='Robot make used to derive controller/planning names.'
         ),
         DeclareLaunchArgument(
             'robot_model',
-            default_value='gen3',
+            default_value='panda',
             description='Robot model used to locate xacro, MoveIt, and Gazebo config.'
         ),
         DeclareLaunchArgument(
             'robot_source',
-            default_value='kortex',
+            default_value='armada',
             description='Package prefix for description/bringup/gazebo packages. Use robot_source:=kortex for the Kinova Gen3 path.'
         ),
         DeclareLaunchArgument(
@@ -65,17 +65,17 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         # the Kinova robot and move_group.
         DeclareLaunchArgument(
             'planning_group',
-            default_value='manipulator',
+            default_value='',
             description='Override MoveIt planning group. Leave empty to use the original derived value.'
         ),
         DeclareLaunchArgument(
             'base_frame',
-            default_value='base_link',
+            default_value='',
             description='Override base/planning frame for debug markers and grasp transforms. Leave empty for default.'
         ),
         DeclareLaunchArgument(
             'ee_link',
-            default_value='end_effector_link',
+            default_value='',
             description='Optional end-effector link override for MoveGroupInterface.'
         ),
         DeclareLaunchArgument(
@@ -85,7 +85,7 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'launch_move_group',
-            default_value='False',
+            default_value='True',
             description='Start move_group from moveit_core.launch.py. Set False if Kinova robot.launch.py already started move_group.'
         ),
         DeclareLaunchArgument(
@@ -100,19 +100,8 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'use_fake_hardware',
-            default_value='false',
+            default_value='true',
             description='Kinova fake hardware flag used only if this helper needs to build a Kinova robot_description.'
-        ),
-
-        DeclareLaunchArgument(
-            'move_to_pregrasp_pose',
-            default_value='True',
-            description='If true, move_to_pose moves to a pregrasp pose offset backward along end-effector Z instead of the exact grasp pose.'
-        ),
-        DeclareLaunchArgument(
-            'pregrasp_ee_z_distance',
-            default_value='0.10',
-            description='Distance in meters for move_to_pose to back away from the requested grasp pose along end-effector Z.'
         ),
 
         DeclareLaunchArgument(
@@ -173,7 +162,7 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'lift_base_z_distance',
-            default_value='0.15',
+            default_value='0.10',
             description='Base-frame Z lift after gripper close.'
         ),
         DeclareLaunchArgument(
@@ -224,23 +213,12 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
 
 
 def _empty_optional_paths():
-    """GEN3 helper: return safe entries when Gazebo-only packages are not used.
-
-    Keep flexbe_webui_path populated because split_launches/flexbe.launch.py
-    uses build_context() only to locate flexbe_webui/launch/flexbe_full.launch.py.
-    If this is left empty in the Gen3/Kortex path, IncludeLaunchDescription
-    falls back to the relative path 'launch/flexbe_full.launch.py'.
-    """
-    try:
-        flexbe_webui_path = get_package_share_directory('flexbe_webui')
-    except Exception:
-        flexbe_webui_path = ''
-
+    """GEN3 helper: return safe empty path entries when Gazebo-only packages are not used."""
     return {
         'gazebo_package_path': '',
         'ros_gz_sim_path': '',
         'mnet_pkg_path': '',
-        'flexbe_webui_path': flexbe_webui_path,
+        'flexbe_webui_path': '',
         'ycb_root': '',
     }
 

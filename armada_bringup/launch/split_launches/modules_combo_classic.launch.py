@@ -55,6 +55,7 @@ def launch_setup(context, *args, **kwargs):
     ]
 
     get_pointcloud_service = Node(
+        # package='compare_flexbe_utilities',
         package='compare_flexbe_utilities',
         executable='get_point_cloud_service',
         name='get_point_cloud_service',
@@ -63,6 +64,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     euclidean_clustering_service = Node(
+        # package='compare_flexbe_utilities',
         package='compare_flexbe_utilities',
         executable='euclidean_clustering_service',
         name='euclidean_clustering_service',
@@ -71,6 +73,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     filter_by_indices_service = Node(
+        # package='compare_flexbe_utilities',
         package='compare_flexbe_utilities',
         executable='filter_by_indices_service',
         name='filter_by_indices_service',

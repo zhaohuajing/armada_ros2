@@ -104,20 +104,12 @@ def launch_setup(context, *args, **kwargs):
     #     parameters=common_params,
     # )
 
-    # Parameters used by move_to_pose_service for the two-stage pregrasp workflow.
-    # The service receives the actual grasp pose from FlexBE, but moves to a
-    # pregrasp pose that is offset backward along the requested end-effector Z.
-    move_to_pose_params = common_params + [
-        {'move_to_pregrasp_pose': LaunchConfiguration('move_to_pregrasp_pose')},
-        {'pregrasp_ee_z_distance': LaunchConfiguration('pregrasp_ee_z_distance')},
-    ]
-
     move_pose = Node(
         package='cgn_flexbe_utilities',
         executable='move_to_pose_service',
         name='move_to_pose_service',
         output='screen',
-        parameters=move_to_pose_params,
+        parameters=common_params,
     )
 
     # move_named = Node(
