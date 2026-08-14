@@ -40,17 +40,17 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
     args = [
         DeclareLaunchArgument(
             'robot_make',
-            default_value='panda',
+            default_value='gen3',
             description='Robot make used to derive controller/planning names.'
         ),
         DeclareLaunchArgument(
             'robot_model',
-            default_value='panda',
+            default_value='gen3',
             description='Robot model used to locate xacro, MoveIt, and Gazebo config.'
         ),
         DeclareLaunchArgument(
             'robot_source',
-            default_value='armada',
+            default_value='kortex',
             description='Package prefix for description/bringup/gazebo packages. Use robot_source:=kortex for the Kinova Gen3 path.'
         ),
         DeclareLaunchArgument(
@@ -65,17 +65,17 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         # the Kinova robot and move_group.
         DeclareLaunchArgument(
             'planning_group',
-            default_value='',
+            default_value='manipulator',
             description='Override MoveIt planning group. Leave empty to use the original derived value.'
         ),
         DeclareLaunchArgument(
             'base_frame',
-            default_value='',
+            default_value='base_link',
             description='Override base/planning frame for debug markers and grasp transforms. Leave empty for default.'
         ),
         DeclareLaunchArgument(
             'ee_link',
-            default_value='',
+            default_value='end_effector_link',
             description='Optional end-effector link override for MoveGroupInterface.'
         ),
         DeclareLaunchArgument(
@@ -85,7 +85,7 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'launch_move_group',
-            default_value='True',
+            default_value='False',
             description='Start move_group from moveit_core.launch.py. Set False if Kinova robot.launch.py already started move_group.'
         ),
         DeclareLaunchArgument(
@@ -100,8 +100,19 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'use_fake_hardware',
-            default_value='true',
+            default_value='false',
             description='Kinova fake hardware flag used only if this helper needs to build a Kinova robot_description.'
+        ),
+
+        DeclareLaunchArgument(
+            'move_to_pregrasp_pose',
+            default_value='True',
+            description='If true, move_to_pose moves to a pregrasp pose offset backward along end-effector Z instead of the exact grasp pose.'
+        ),
+        DeclareLaunchArgument(
+            'pregrasp_ee_z_distance',
+            default_value='0.10',
+            description='Distance in meters for move_to_pose to back away from the requested grasp pose along end-effector Z.'
         ),
 
         DeclareLaunchArgument(
@@ -162,38 +173,13 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
         ),
         DeclareLaunchArgument(
             'lift_base_z_distance',
-            default_value='0.10',
+            default_value='0.15',
             description='Base-frame Z lift after gripper close.'
         ),
         DeclareLaunchArgument(
             'reopen_after_lift',
             default_value='True',
-            description='If true, reopen gripper after lift/drop pose motion.'
-        ),
-        DeclareLaunchArgument(
-            'move_to_drop_pose_after_lift',
-            default_value='True',
-            description='If true, move to a drop pose after lift and before opening the gripper.'
-        ),
-        DeclareLaunchArgument(
-            'use_drop_named_target',
-            default_value='True',
-            description='If true, reach_to_grasp uses an SRDF arm named target for drop instead of a Cartesian drop pose.'
-        ),
-        DeclareLaunchArgument(
-            'drop_named_target',
-            default_value='DropToBox',
-            description='SRDF manipulator named target used as the drop pose.'
-        ),
-        DeclareLaunchArgument(
-            'return_to_named_target_after_drop',
-            default_value='True',
-            description='If true, move to return_named_target after opening/releasing the object.'
-        ),
-        DeclareLaunchArgument(
-            'return_named_target',
-            default_value='CameraTopDown',
-            description='SRDF manipulator named target to return to after dropping.'
+            description='If true, reopen gripper after lift for drop tests.'
         ),
     ]
 
@@ -238,12 +224,23 @@ def common_launch_arguments(include_flexbe=False, include_rviz=False, include_ca
 
 
 def _empty_optional_paths():
-    """GEN3 helper: return safe empty path entries when Gazebo-only packages are not used."""
+    """GEN3 helper: return safe entries when Gazebo-only packages are not used.
+
+    Keep flexbe_webui_path populated because split_launches/flexbe.launch.py
+    uses build_context() only to locate flexbe_webui/launch/flexbe_full.launch.py.
+    If this is left empty in the Gen3/Kortex path, IncludeLaunchDescription
+    falls back to the relative path 'launch/flexbe_full.launch.py'.
+    """
+    try:
+        flexbe_webui_path = get_package_share_directory('flexbe_webui')
+    except Exception:
+        flexbe_webui_path = ''
+
     return {
         'gazebo_package_path': '',
         'ros_gz_sim_path': '',
         'mnet_pkg_path': '',
-        'flexbe_webui_path': '',
+        'flexbe_webui_path': flexbe_webui_path,
         'ycb_root': '',
     }
 
